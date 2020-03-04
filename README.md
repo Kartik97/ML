@@ -1,2 +1,1 @@
-# ML
-ML Assignments at IITD are included here
+# ML Assignments given at IITD are included here
