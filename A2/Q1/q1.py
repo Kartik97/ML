@@ -314,6 +314,33 @@ def findAddedClasses(data,phi0,phi4,theta0,theta4,t0,t4,emoji0,emoji4,e0,e4):
         pred4.append(prob4)
     return pred,pred0,pred4
 
+def tfidfVectorizer(clf,X,data):
+    for i in tqdm(range(0,data.shape[0]//1000)):
+        clf.partial_fit(X[1000*i:1000*(i+1)].todense(),data[0][1000*i:1000*(i+1)],classes=np.array([0,4]))
+    return clf
+
+def rocCurve(data,prob0,prob4):
+    y = label_binarize(data[0],classes=[0,4])
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    fpr[0], tpr[0], _ = roc_curve(y,prob0)
+    roc_auc[0] = auc(fpr[0], tpr[0])
+    fpr[1], tpr[1], _ = roc_curve(y,prob4)
+    roc_auc[1] = auc(fpr[1], tpr[1])
+    plt.figure()
+    lw = 2
+    plt.plot(fpr[0], tpr[0], color='darkorange',lw=lw, label='ROC curve for Class 0(area = %0.2f)' % roc_auc[0])
+    plt.plot(fpr[1], tpr[1], color='cyan',lw=lw, label='ROC curve for Class 1(area = %0.2f)' % roc_auc[1])
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic')
+    plt.legend(loc="lower right")
+    plt.show()
+
 if __name__=="__main__":
     train,test = init()
 
@@ -351,7 +378,6 @@ if __name__=="__main__":
 
     stop = set(stopwords.words("english"))
     stemmer = PorterStemmer()
-    # stemmer = SnowballStemmer("english")
 
     st=time()
     cleanText(train,5)
@@ -390,4 +416,48 @@ if __name__=="__main__":
 
     # PART F
 
-    
+    tfidf = TfidfVectorizer(min_df=0.0007)
+    clf = GaussianNB()
+    X = tfidf.fit_transform(train[6])
+    clf = tfidfVectorizer(clf,X,train)
+    Y = tfidf.transform(test[6])
+    testDense = Y.todense()
+
+    predictionTestTfidf = clf.predict(testDense)
+
+    tfidf = TfidfVectorizer()
+    X = tfidf.fit_transform(train[6])
+    multiClf = MultinomialNB()
+    multiClf.fit(X,train[0])
+    Y = tfidf.transform(test[6])
+    testDense = Y.todense()
+    predictionTestmulti = multiClf.predict(testDense)
+
+    print("Accuracy over GaussianNB")
+    checkAccuracy(test[0],predictionTestTfidf)
+    print("Accuracy over MultinomialNB")
+    checkAccuracy(test[0],predictionTestmulti)
+
+    Y = train[0]
+    percentile = SelectPercentile(chi2, percentile=10)
+    selectedData = percentile.fit_transform(X,Y)
+
+    tfidf = TfidfVectorizer()
+    X = tfidf.fit_transform(train[6])
+    clf2 = GaussianNB()
+    per10 = tfidfVectorizer(clf2,selectedData,train)
+
+    Y = tfidf.transform(test[6])
+    testDense = Y.todense()
+    testDense10per = percentile.transform(testDense)
+    prediction10per = clf2.predict(testDense10per)
+
+    print("Percentile Selected: 10per")
+    checkAccuracy(test[20],testDense10per)
+
+    # PART G
+
+    rocCurve(test,pred0,pred4)
+    rocCurve(test,predTest0,predTest4)
+    rocCurve(test,CpredTest0,CpredTest4)
+    rocCurve(test,predAddedTest0,predAddedTest4)
