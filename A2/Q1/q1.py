@@ -438,12 +438,12 @@ if __name__=="__main__":
     print("Accuracy over MultinomialNB")
     checkAccuracy(test[0],predictionTestmulti)
 
+    tfidf = TfidfVectorizer()
+    X = tfidf.fit_transform(train[6])
     Y = train[0]
     percentile = SelectPercentile(chi2, percentile=10)
     selectedData = percentile.fit_transform(X,Y)
-
-    tfidf = TfidfVectorizer()
-    X = tfidf.fit_transform(train[6])
+    
     clf2 = GaussianNB()
     per10 = tfidfVectorizer(clf2,selectedData,train)
 
