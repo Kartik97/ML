@@ -422,10 +422,9 @@ if __name__=="__main__":
     clf = tfidfVectorizer(clf,X,train)
     Y = tfidf.transform(test[6])
     testDense = Y.todense()
-
     predictionTestTfidf = clf.predict(testDense)
 
-    tfidf = TfidfVectorizer()
+    tfidf = TfidfVectorizer(min_df=0.0007)
     X = tfidf.fit_transform(train[6])
     multiClf = MultinomialNB()
     multiClf.fit(X,train[0])
@@ -438,26 +437,24 @@ if __name__=="__main__":
     print("Accuracy over MultinomialNB")
     checkAccuracy(test[0],predictionTestmulti)
 
-    tfidf = TfidfVectorizer()
+    tfidf = TfidfVectorizer(min_df=200)
     X = tfidf.fit_transform(train[6])
     Y = train[0]
     percentile = SelectPercentile(chi2, percentile=10)
     selectedData = percentile.fit_transform(X,Y)
-    
+
     clf2 = GaussianNB()
     per10 = tfidfVectorizer(clf2,selectedData,train)
 
-    Y = tfidf.transform(test[6])
-    testDense = Y.todense()
-    testDense10per = percentile.transform(testDense)
-    prediction10per = clf2.predict(testDense10per)
-
+    testData = tfidf.transform(test[6])
+    testDense10per = percentile.transform(testData)
+    prediction10per = clf2.predict(testDense10per.todense())
     print("Percentile Selected: 10per")
-    checkAccuracy(test[20],testDense10per)
+    checkAccuracy(test[0],prediction10per)
 
     # PART G
 
-    rocCurve(test,pred0,pred4)
+    # rocCurve(train,pred0,pred4)
     rocCurve(test,predTest0,predTest4)
     rocCurve(test,CpredTest0,CpredTest4)
     rocCurve(test,predAddedTest0,predAddedTest4)

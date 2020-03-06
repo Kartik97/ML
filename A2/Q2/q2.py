@@ -251,7 +251,7 @@ if __name__=="__main__":
     A,B = createAb(Y)
     sol=solvers.qp(P, q, G, h, A, B)
     alpha = np.array(sol['x'])
-    alpha = stripAlpha(alpha,1e-4)
+    alpha = stripAlpha(alpha,1e-5)
 
     index = alpha != 0
     print("Number of support Vectors",index.sum())
@@ -283,7 +283,7 @@ if __name__=="__main__":
     A,B = createAb(Y)
     sol=solvers.qp(P, q, G, h, A, B)
     alpha = np.array(sol['x'])
-    alpha = stripAlpha(alpha,1e-4)
+    alpha = stripAlpha(alpha,1e-5)
     
     index = alpha != 0
     print("No of support vectors in Gaussian Kernel",index.sum())
@@ -400,14 +400,14 @@ if __name__=="__main__":
 
     # PART 2(C)
 
-    confusion = confusionMatrix(testY,oneVonePred,title="Confusion Matrix for Test Set")
-    draw(confusion)
-    confusion = confusionMatrix(valY,oneVonePredVal,title="Confusion Matrix for Validation Set")
-    draw(confusion)
-    confusion = confusionMatrix(testY,oneVonePredSVC,title="Confusion Matrix for Test Set")
-    draw(confusion)
-    confusion = confusionMatrix(valY,oneVonePredValSVC,title="Confusion Matrix for Validation Set")
-    draw(confusion)
+    confusion = confusionMatrix(testY,oneVonePred)
+    draw(confusion,title="Confusion Matrix for Test Set")
+    confusion = confusionMatrix(valY,oneVonePredVal)
+    draw(confusion,title="Confusion Matrix for Validation Set")
+    confusion = confusionMatrix(testY,oneVonePredSVC)
+    draw(confusion,title="Confusion Matrix for Test Set")
+    confusion = confusionMatrix(valY,oneVonePredValSVC)
+    draw(confusion,title="Confusion Matrix for Validation Set")
 
     # PART 2(D)
 
