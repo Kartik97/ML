@@ -229,6 +229,26 @@ def verifyKfold(trainX,trainY,testX,testY):
     print(time.time()-loopTime)
     return accuracies
 
+def plotAvg(c,avgValList,title=""):
+    fig = plt.figure(0)
+    ax = plt.gca()
+    ax.bar(c.ravel(),(avgValList).ravel(),width=0.4,label="Validation Accuracies")
+    ax.set_xlabel("C (in log)")
+    ax.set_ylabel("Accuracy Percentage")
+    ax.set_title(title)
+    # for i in range(5):
+    #     ax.text(c[i]-0.5,avgValList[0,i]+1,s = str("%.2f" % avgValList[0,i]))
+    plt.show()
+
+def findAvg(accList):
+    avgValList = np.zeros((1,5))
+    avgTestList = np.zeros((1,5))
+    for i in accList:
+        for j in range(len(i)):
+            avgValList[0,j] += i[j][0]
+            avgTestList[0,j] += i[j][1]
+    return avgValList*20,avgTestList*20
+
 if __name__=="__main__":
 
     # PART 1(A)
@@ -424,3 +444,13 @@ if __name__=="__main__":
         Kfold = verifyKfold(trainX,trainY,testX,testY)
         with open('StratkFold.pickle', 'wb') as f:
             pickle.dump(Kfold, f)
+
+    c = np.log(np.array([1e-5,1e-3,1,5,10]))
+    avgValList,avgTestList = findAvg(accList)
+
+    plotAvg(c,avgValList,"Validation Accuracies")
+    plotAvg(c,avgTestList,"Test Accuracies")
+
+    clf = SVC(C=5,kernel='rbf',gamma=0.05)
+    clf.fit(trainX,trainY)
+    clf.score(testX,testY)
