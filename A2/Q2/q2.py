@@ -174,7 +174,7 @@ def createSVMs(data,classes):
     c2 = classes[1]
     filteredX,filteredY,pos,neg = stripData(data,c1,c2)
     filteredY.reshape((1,-1))
-    clf = SVC(C=1.0,kernel='rbf',gamma=0.05,probability=True)
+    clf = SVC(C=1.0,kernel='rbf',gamma=0.05,decision_function_shape='ovo')
     clf.fit(filteredX,filteredY.ravel())
     print("Done")
     return clf
@@ -182,7 +182,7 @@ def createSVMs(data,classes):
 def allPredictions(clfList,data):
     pred = []
     for i in tqdm(clfList):
-        x = i.predict_proba(data)
+        x = i.decision_function(data)
         pred.append(x)
     return pred
 
@@ -249,6 +249,11 @@ def findAvg(accList):
             avgTestList[0,j] += i[j][1]
     return avgValList*20,avgTestList*20
 
+def printSupportVectors(data,index):
+    for i in range(index.shape[0]):
+        if index[i]:
+            print(data[i])
+
 if __name__=="__main__":
 
     # PART 1(A)
@@ -275,24 +280,26 @@ if __name__=="__main__":
 
     index = alpha != 0
     print("Number of support Vectors",index.sum())
+    # print("Values of support Vectors",printSupportVectors(trainD,index))
 
     w,b = calwb(alpha,trainD,Y,pos,neg)
+    bL = b
     print("w,b in linear kernel",w.shape,b)
-    print("Linear Kernel Training",time.time()-t)
+    print("Linear Kernel Training Time:",time.time()-t)
 
     predictionTrain = predClasses(w,b,trainD)
-    print("Accuracy on Train using Linear Kernel")
+    print("Accuracy on Training Data using Linear Kernel")
     checkAccuracy(train[784],predictionTrain)
 
     testX,testY,_,_ = stripData(test,c1,c2)
     valX,valY,_,_ = stripData(val,c1,c2)
 
     predictionTest = predClasses(w,b,testX)
-    print("Accuracy on Test using Linear Kernel")
+    print("Accuracy on Test Data using Linear Kernel")
     checkAccuracy(testY,np.array(predictionTest))
 
     predictionVal = predClasses(w,b,valX)
-    print("Accuracy on Val using Linear Kernel")
+    print("Accuracy on Validataion Data using Linear Kernel")
     checkAccuracy(valY,predictionVal)
 
     # PART 1(B)
@@ -307,31 +314,37 @@ if __name__=="__main__":
     
     index = alpha != 0
     print("No of support vectors in Gaussian Kernel",index.sum())
+    # print("Values of support Vectors",printSupportVectors(trainD,index))
+
     b = calb(alpha,trainD,Y,pos,neg)
     print("b on gaussian kernel",b)
-    print("Gaussian Kernel Training",time.time()-t)
+    print("Gaussian Kernel Training Time:",time.time()-t)
 
     predictionTrain = predGaussianClasses(alpha,b,trainD,Y,trainD)
     predictionTest = predGaussianClasses(alpha,b,trainD,Y,testX)
     predictionVal = predGaussianClasses(alpha,b,trainD,Y,valX)
 
-    print("Gaussian Accuracy on Train")
+    print("Accuracy on Training data using Gaussian Kernel")
     checkAccuracy(Y,predictionTrain)
-    print("Gaussian Accuracy on Test")
+    print("Accuracy on Test Data using Gaussian Kernel")
     checkAccuracy(testY,predictionTest)
-    print("Gaussian Accuracy on Val")
+    print("Accuracy on Validation data using Gaussian Kernel")
     checkAccuracy(valY,predictionVal)
 
     # PART 1(C)
 
-    clfLinear = SVC(C=1.0,kernel='linear')
-    clfGaussian = SVC(C=1.0,kernel='rbf',gamma=0.05)
+    clfLinear = SVC(C=1.0,kernel='linear',decision_function_shape='ovo')
+    clfGaussian = SVC(C=1.0,kernel='rbf',gamma=0.05,decision_function_shape='ovo')
+    t = time.time()
     clfLinear.fit(trainD, train[784])
+    print("Fit time on Linear Kernel",time.time()-t)
+    t = time.time()
     clfGaussian.fit(trainD, train[784])
+    print("Fit time on Gaussian Kernel",time.time()-t)
 
-    print("SVM linear kernel support vectors",clfLinear.support_vectors_.shape)
+    print("SVM linear kernel support vectors",clfLinear.support_vectors_.shape,clfLinear.support_vectors_)
     print("w,b on linear SVM",clfLinear.intercept_)
-    print("SVM gaussian kernel support vectors",clfGaussian.support_vectors_.shape)
+    print("SVM gaussian kernel support vectors",clfGaussian.support_vectors_.shape,clfGaussian.support_vectors_)
     print("b on gaussian SVM",clfGaussian.intercept_)
 
     testX,testY,_,_ = stripData(test,c1,c2)
@@ -342,11 +355,11 @@ if __name__=="__main__":
     predictionVal = clfLinear.predict(valX)
 
     print("On Linear Kernel")
-    print("Train")
+    print("Train Accuracy")
     checkAccuracy(Y,predictionTrain)
-    print("Test")
+    print("Test Accuracy")
     checkAccuracy(testY,predictionTest)
-    print("Val")
+    print("Validation Accuracy")
     checkAccuracy(valY,predictionVal)
 
     predictionTrain = clfGaussian.predict(trainD)
@@ -354,12 +367,17 @@ if __name__=="__main__":
     predictionVal = clfGaussian.predict(valX)
 
     print("On Gaussian Kernel")
-    print("Train")
+    print("Training Accuracy")
     checkAccuracy(Y,predictionTrain)
-    print("Test")
+    print("Testing Accuracy")
     checkAccuracy(testY,predictionTest)
-    print("Val")
+    print("Validation Accuracy")
     checkAccuracy(valY,predictionVal)
+
+    print("Difference in w (Linear Kernel):",np.linalg.norm(clfLinear.coef_.T-w,ord=2))
+    print("Difference in b (Linear Kernel):",abs(clfLinear.intercept_- bL))
+    print("Difference in b (Gaussian Kernel):",abs(clfGaussian.intercept_- b))
+
 
     # PART 2(A)
 
@@ -407,27 +425,23 @@ if __name__=="__main__":
     testY = globalTest[784]
     testX = np.array(globalTest.drop(columns=[784]))/255
     predictionsTest = allPredictions(clfList,testX)
-    oneVonePredSVC = findMajorityClass(predictionsTest,l,calculations="SVC")
-    print("Accuracy on One vs One SVM Test")
+    oneVonePredSVC = findMajorityClass(predictionsTest,l)
+    print("Accuracy on One vs One SVM (Test Data)")
     checkAccuracy(testY,oneVonePredSVC)
 
     valY = globalVal[784]
     valX = np.array(globalVal.drop(columns=[784]))/255
     predictionsVal = allPredictions(clfList,valX)
-    oneVonePredValSVC = findMajorityClass(predictionsVal,l,calculations="SVC")
+    oneVonePredValSVC = findMajorityClass(predictionsVal,l)
     print("Accuracy on One vs One SVM Validation Set")
     checkAccuracy(valY,oneVonePredValSVC)
 
     # PART 2(C)
 
     confusion = confusionMatrix(testY,oneVonePred)
-    draw(confusion,title="Confusion Matrix for Test Set")
-    confusion = confusionMatrix(valY,oneVonePredVal)
-    draw(confusion,title="Confusion Matrix for Validation Set")
+    draw(confusion,title="Confusion Matrix for Test Set on Implemented SVM model")
     confusion = confusionMatrix(testY,oneVonePredSVC)
-    draw(confusion,title="Confusion Matrix for Test Set")
-    confusion = confusionMatrix(valY,oneVonePredValSVC)
-    draw(confusion,title="Confusion Matrix for Validation Set")
+    draw(confusion,title="Confusion Matrix for Test Set on SVM model")
 
     # PART 2(D)
 
@@ -451,6 +465,17 @@ if __name__=="__main__":
     plotAvg(c,avgValList,"Validation Accuracies")
     plotAvg(c,avgTestList,"Test Accuracies")
 
-    clf = SVC(C=5,kernel='rbf',gamma=0.05)
+    plt.figure(1)
+    ax = plt.gca()
+    ax.plot(list(c),avgValList.ravel(),label="Average Validation Accuracy",marker='.')
+    ax.plot(list(c),avgTestList.ravel(),label="Average Test Accuracy",marker='*')
+    ax.legend()
+    ax.set_xlabel("C (in log)")
+    ax.set_ylabel("Accuracy Percentage")
+    ax.set_title("Comparison between Test and Validation Accuracies")
+    plt.show()
+
+    clf = SVC(C=5,kernel='rbf',gamma=0.05,decision_function_shape='ovo')
     clf.fit(trainX,trainY)
-    clf.score(testX,testY)
+    print("Accuracy on best validation Score:")
+    print(clf.score(testX,testY))

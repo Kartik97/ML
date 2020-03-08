@@ -89,11 +89,11 @@ def findClasses(data,phi0,phi4,theta0,theta4,t0,t4):
             try:
                 prob0 = prob0+(math.log(theta0[j]))
             except:
-                prob0 = prob0+float(1/(t0+1))
+                prob0 = prob0+math.log(float(1/(t0+1)))
             try:
                 prob4 = prob4+(math.log(theta4[j]))
             except:
-                prob4 = prob4+float(1/(t4+1))
+                prob4 = prob4+math.log(float(1/(t4+1)))
                 
         prob0 = prob0+(math.log(phi0))
         prob4 = prob4+(math.log(phi4))
@@ -144,11 +144,12 @@ def confusionMatrix(test,prediction):
         index=index+1
     return mat
 
-def drawMatrix(matrix):
+def drawMatrix(matrix,title=""):
     df_cm = pd.DataFrame(matrix.astype(int), index = [i for i in "04"],columns = [i for i in "04"])
     plt.figure(figsize = (7,5))
     sns.set(font_scale=1.4)
     sns.heatmap(df_cm,cmap="Blues", annot=True,fmt="d",linewidth=1,annot_kws={"size": 16})
+    plt.title(title)
     plt.show()
 
 def cleanText(data,col):
@@ -277,22 +278,22 @@ def findAddedClasses(data,phi0,phi4,theta0,theta4,t0,t4,emoji0,emoji4,e0,e4):
             try:
                 prob0 = prob0+(math.log(theta0[j]))
             except:
-                prob0 = prob0+float(1/(t0+1))
+                prob0 = prob0+math.log(float(1/(t0+1)))
             if j in l4:
                 count4+=1
             try:
                 prob4 = prob4+(math.log(theta4[j]))
             except:
-                prob4 = prob4+float(1/(t4+1))
+                prob4 = prob4+math.log(float(1/(t4+1)))
         for j in range(0,len(words)-1):
             try:
                 prob0 = prob0+(math.log(theta0[words[j]+" "+words[j+1]]))
             except:
-                prob0 = prob0+float(1/(t0+1))
+                prob0 = prob0+math.log(float(1/(t0+1)))
             try:
                 prob4 = prob4+(math.log(theta4[words[j]+" "+words[j+1]]))
             except:
-                prob4 = prob4+float(1/(t4+1))
+                prob4 = prob4+math.log(float(1/(t4+1)))
         flag=0
         try:
             for j in emot.emoticons(i)['value']:
@@ -302,10 +303,10 @@ def findAddedClasses(data,phi0,phi4,theta0,theta4,t0,t4,emoji0,emoji4,e0,e4):
         except:
             pass
         if(flag==0):
-            prob0 = prob0+float(1/(e0+1))
-            prob4 = prob4+float(1/(e4+1))
-        prob0 = prob0+(math.log(phi0))+(count0/101)
-        prob4 = prob4+(math.log(phi4))+(count4/101)
+            prob0 = prob0+math.log(float(1/(e0+1)))
+            prob4 = prob4+math.log(float(1/(e4+1)))
+        prob0 = prob0+(math.log(phi0))+math.log((count0/101))
+        prob4 = prob4+(math.log(phi4))+math.log((count4/101))
         if(prob0>prob4):
             pred.append(0)
         else:
@@ -351,28 +352,28 @@ if __name__=="__main__":
     # print(len(vocab))
     phi0,phi4,theta0,theta4,t0,t4 = learnParam(train,vocab,5)
     predictionTrain,pred0,pred4 = findClasses(train[5],phi0,phi4,theta0,theta4,t0,t4)
-    print("Prediction Train",time()-t)
+    print("Prediction on Training Data, Time Taken:",time()-t)
     checkAccuracy(train[0],predictionTrain)
 
     test = test[test[0]==0].append(test[test[0]==4])
     predictionTest,predTest0,predTest4 = findClasses(test[5],phi0,phi4,theta0,theta4,t0,t4)
-    print("Prediction Test")
+    print("Prediction on Test Data")
     checkAccuracy(test[0],predictionTest)
 
     # PART B
 
     predictionRandom = randomGuess(test[5])
-    print("Random Guess")
+    print("Random Guess Accuracy:")
     checkAccuracy(test[0],predictionRandom)
 
     predictionMajority = majorityGuess(train,test)
-    print("Majority Guess")
+    print("Majority Guess Accuracy:")
     checkAccuracy(test[0],predictionMajority)
 
     # PART C
 
     matrix = confusionMatrix(test,predictionTest)
-    drawMatrix(matrix)
+    drawMatrix(matrix,"Confusion Matrix on Test Data")
 
     # PART D
 
@@ -390,11 +391,11 @@ if __name__=="__main__":
 
     matrix = confusionMatrix(test,predictionTestClean)
     drawMatrix(matrix)
-    print("Prediction on Clean Test")
+    print("Prediction on Clean Test Data")
     checkAccuracy(test[0],predictionTestClean)
 
     predictionTrainClean,CpredTrain0,CpredTrain4 = findClasses(train[6],Cphi0,Cphi4,Ctheta0,Ctheta4,Ct0,Ct4)
-    print("Prediction on Clean Train")
+    print("Prediction on Clean Train Data")
     checkAccuracy(train[0],predictionTrainClean)
 
     # PART E
@@ -423,6 +424,7 @@ if __name__=="__main__":
     Y = tfidf.transform(test[6])
     testDense = Y.todense()
     predictionTestTfidf = clf.predict(testDense)
+    logProbaTest = clf.predict_log_proba(testDense)
 
     tfidf = TfidfVectorizer(min_df=0.0007)
     X = tfidf.fit_transform(train[6])
@@ -431,6 +433,7 @@ if __name__=="__main__":
     Y = tfidf.transform(test[6])
     testDense = Y.todense()
     predictionTestmulti = multiClf.predict(testDense)
+    logProbaTestMulti = clf.predict_log_proba(testDense)
 
     print("Accuracy over GaussianNB")
     checkAccuracy(test[0],predictionTestTfidf)
@@ -449,12 +452,13 @@ if __name__=="__main__":
     testData = tfidf.transform(test[6])
     testDense10per = percentile.transform(testData)
     prediction10per = clf2.predict(testDense10per.todense())
+    logProbaTestPer = clf2.predict_log_proba(testDense10per.todense())
     print("Percentile Selected: 10per")
     checkAccuracy(test[0],prediction10per)
 
     # PART G
-
-    # rocCurve(train,pred0,pred4)
+    
     rocCurve(test,predTest0,predTest4)
     rocCurve(test,CpredTest0,CpredTest4)
     rocCurve(test,predAddedTest0,predAddedTest4)
+    # rocCurve(test,-logProbaTest[:,0],logProbaTest[:,1])
