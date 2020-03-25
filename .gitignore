@@ -15,9 +15,14 @@ A3/a.png
 A3/b.png
 A3/gridCV3.pickle
 A3/gridSearch.pickle
-A3/max_features350.jpg
+A3/max_features350-2.jpg
 A3/max_features450.jpg
-A3/min_samples_split350.jpg
+A3/min_samples_split350-2.jpg
 A3/min_samples_split450.jpg
-A3/n_estimators350.jpg
+A3/n_estimators350-2.jpg
 A3/n_estimators450.jpg
+A3/paramSensitivity350.pickle
+A3/paramSensitivity450.pickle
+A3/max-features350.png
+A3/n_estimators350.png
+A3/min_samples/split350.png
