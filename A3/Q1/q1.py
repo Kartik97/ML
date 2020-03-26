@@ -12,14 +12,7 @@ import pickle
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import itertools
-
-path = input()
-trainX = data_utils.read_sparse_file(path+"/train_x.txt").toarray()
-trainY = np.loadtxt(path+"/train_y.txt")
-testX = data_utils.read_sparse_file(path+"/test_x.txt").toarray()
-testY = np.loadtxt(path+"/test_y.txt")
-valX = data_utils.read_sparse_file(path+"/valid_x.txt").toarray()
-valY = np.loadtxt(path+"/valid_y.txt")
+import sys
 
 class Node:
     def __init__(self,attr,splitVal,value,n,left,right,parent):
@@ -379,134 +372,160 @@ def plotForest(x,y,title,xlabel,leg):
     plt.show()
 
 
-# ## PART A
+if __name__=="__main__":
 
-interval = 10
-clf = DecisionTree()
-try:
+    path = sys.argv[1]
+    trainX = data_utils.read_sparse_file(path+"/train_x.txt").toarray()
+    trainY = np.loadtxt(path+"/train_y.txt")
+    testX = data_utils.read_sparse_file(path+"/test_x.txt").toarray()
+    testY = np.loadtxt(path+"/test_y.txt")
+    valX = data_utils.read_sparse_file(path+"/valid_x.txt").toarray()
+    valY = np.loadtxt(path+"/valid_y.txt")
+
+    # PART A
+
+    interval = 10
+    clf = DecisionTree()
+    try:
+        st = time()
+        pickle_in = open("Tree.pickle","rb")
+        clf,nodeCount,trainList,testList,valList = pickle.load(pickle_in)
+        print("Tree Loaded in :",time()-st)
+    except:
+        st = time()
+        nodeCount,trainList,testList,valList = clf.fit(trainX,trainY,testX,testY,valX,valY,interval)
+        print("Tree created in:",time()-st)
+        with open("Tree.pickle", "wb") as f:
+            pickle.dump((clf,nodeCount,trainList,testList,valList), f)
+
+    predTrain = clf.predict(trainX)
+    trainScore = clf.score(predTrain,trainY)
+    print("Training Score on Tree:",trainScore)
+    predTest = clf.predict(testX)
+    testScore = clf.score(predTest,testY)
+    print("Testing Score on Tree:",testScore)
+    predVal = clf.predict(valX)
+    valScore = clf.score(predVal,valY)
+    print("Validation Score on Tree:",valScore)
+
+    plotTreeAccuracies(nodeCount,trainList,testList,valList,"Accuracy vs Number of Nodes","lower right")
+
+    # PART B
     st = time()
-    pickle_in = open("Tree.pickle","rb")
-    clf,nodeCount,trainList,testList,valList = pickle.load(pickle_in)
-    print("Tree Loaded in :",time()-st)
-except:
+    accList = clf.prune(trainX,trainY,testX,testY,valX,valY)
+    print("Tree pruned in:",time()-st,"secs")
+    predTrain = clf.predict(trainX)
+    trainScore = clf.score(predTrain,trainY)
+    print("Training Score on pruned tree:",trainScore)
+    predTest = clf.predict(testX)
+    testScore = clf.score(predTest,testY)
+    print("Testing Score on pruned tree:",testScore)
+    predVal = clf.predict(valX)
+    valScore = clf.score(predVal,valY)
+    print("Validation Score on pruned tree:",valScore)
+    accList = np.array(accList)
+    plotTreeAccuracies(accList[:,0],accList[:,1],accList[:,2],accList[:,3],"Accuracy vs Pruned number of Nodes","upper left")
+
+    y = np.array(trainList)
+    plt.figure(figsize=(8,6))
+    ax = plt.gca()
+    ax.plot(nodeCount,y,label="Train Set Accuracies")
+    ax.plot(accList[:,0],accList[:,1],label="Pruned train Accuracies",linestyle="--")
+    y = np.array(testList)
+    ax.plot(nodeCount,y,label="Test Set Accuracies")
+    ax.plot(accList[:,0],accList[:,2],label="Pruned test Accuracies",linestyle="--")
+    y = np.array(valList)
+    ax.plot(nodeCount,y,label="Validation Set Accuracies")
+    ax.plot(accList[:,0],accList[:,3],label="Pruned validation Accuracies",linestyle="--")
+    plt.title("Tree Accuracies")
+    ax.set_xlabel("Node Count",fontsize=12)
+    ax.set_ylabel("Accuracies",fontsize=12)
+    plt.legend(loc="lower right")
+    plt.show()
+
+    # PART C
+    estimatorList = [50,150,250,350,450]
+    minSamplesList = [2,4,6,8,10]
+    maxFeaturesList = [0.1,0.3,0.5,0.7,0.9,1]
+
+    paraList = list(itertools.product(estimatorList,minSamplesList,maxFeaturesList))
+    data = (trainX,trainY)
+
+    try:
+        st = time()
+        pickle_in = open("gridSearch.pickle","rb")
+        oobList = pickle.load(pickle_in)
+        print("Grid search without cross validation",time()-st)
+    except:
+        st = time()
+        oobList = Parallel(n_jobs=-1)(delayed(oobScore)(i,data) for i in paraList)
+        print("Grid search without cross validation",time()-st)
+        with open("gridSearch.pickle","wb") as f:
+            pickle.dump(oobList, f)
+
+    oobList = np.array(oobList)
+    index = np.where(oobList[:,1]==max(oobList[:,1]))[0][0]
+    print("Optimal n_estimators:",oobList[index][0][0])
+    print("Optimal max_features:",oobList[index][0][2])
+    print("Optimal min_samples_splt:",oobList[index][0][1])
+    best_max_features = oobList[index][0][2]
+    best_min_samples_split = oobList[index][0][1]
+    best_n_estimators = oobList[index][0][0]
+
+    rf = RandomForestClassifier(criterion='entropy',n_estimators=best_n_estimators,max_features=best_max_features,min_samples_split=best_min_samples_split,oob_score=True,n_jobs=-1)
     st = time()
-    nodeCount,trainList,testList,valList = clf.fit(trainX,trainY,testX,testY,valX,valY,interval)
-    print("Tree created in:",time()-st)
-    with open("Tree.pickle", "wb") as f:
-        pickle.dump((clf,nodeCount,trainList,testList,valList), f)
+    rf.fit(trainX,trainY)
+    print("Time",time()-st)
+    print("Out of bag score:",rf.oob_score_)
+    print("Training score:",rf.score(trainX,trainY))
+    print("Testing score:",rf.score(testX,testY))
+    print("Validation score:",rf.score(valX,valY))
 
-predTrain = clf.predict(trainX)
-trainScore = clf.score(predTrain,trainY)
-print("Training Score on Tree:",trainScore)
-predTest = clf.predict(testX)
-testScore = clf.score(predTest,testY)
-print("Testing Score on Tree:",testScore)
-predVal = clf.predict(valX)
-valScore = clf.score(predVal,valY)
-print("Validation Score on Tree:",valScore)
-
-plotTreeAccuracies(nodeCount,trainList,testList,valList,"Accuracy vs Number of Nodes","lower right")
-
-
-# ## PART B
-st = time()
-accList = clf.prune(trainX,trainY,testX,testY,valX,valY)
-print("Tree pruned in:",time()-st,"secs")
-predTrain = clf.predict(trainX)
-trainScore = clf.score(predTrain,trainY)
-print("Training Score on pruned tree:",trainScore)
-predTest = clf.predict(testX)
-testScore = clf.score(predTest,testY)
-print("Testing Score on pruned tree:",testScore)
-predVal = clf.predict(valX)
-valScore = clf.score(predVal,valY)
-print("Validation Score on pruned tree:",valScore)
-accList = np.array(accList)
-plotTreeAccuracies(accList[:,0],accList[:,1],accList[:,2],accList[:,3],"Accuracy vs Pruned number of Nodes","upper left")
-
-# ## PART C
-estimatorList = [50,150,250,350,450]
-minSamplesList = [2,4,6,8,10]
-maxFeaturesList = [0.1,0.3,0.5,0.7,0.9,1]
-
-paraList = list(itertools.product(estimatorList,minSamplesList,maxFeaturesList))
-data = (trainX,trainY)
-
-try:
+    rf = RandomForestClassifier(criterion='entropy',oob_score=True,n_jobs=-1)
+    parameters = {'n_estimators':[50,150,250,350,450],'max_features':[0.1,0.3,0.5,0.7,0.9,1],'min_samples_split':[2,4,6,8,10]}
+    gridSearchclf = GridSearchCV(rf, parameters,n_jobs=-1,scoring=scorer,cv=3)
+    try:
+        st = time()
+        pickle_in = open("gridCV3.pickle","rb")
+        gridSearchclf = pickle.load(pickle_in)
+        print("Grid Search with cross validation:",time()-st)
+    except:
+        st = time()
+        gridSearchclf.fit(trainX,trainY)
+        print("Grid Search with cross validation:",time()-st)
+        with open("gridCV3.pickle","wb") as f:
+            pickle.dump(gridSearchclf, f)
+    print(gridSearchclf.best_params_)
+    best_max_features = gridSearchclf.best_params_['max_features']
+    best_min_samples_split = gridSearchclf.best_params_['min_samples_split']
+    best_n_estimators = gridSearchclf.best_params_['n_estimators']
+    rf = RandomForestClassifier(criterion='entropy',n_estimators=best_n_estimators,max_features=best_max_features,min_samples_split=best_min_samples_split,oob_score=True,n_jobs=-1)
     st = time()
-    pickle_in = open("gridSearch.pickle","rb")
-    oobList = pickle.load(pickle_in)
-    print("Grid search without cross validation",time()-st)
-except:
-    st = time()
-    oobList = Parallel(n_jobs=-1)(delayed(oobScore)(i,data) for i in paraList)
-    print("Grid search without cross validation",time()-st)
-    with open("gridSearch.pickle","wb") as f:
-        pickle.dump(oobList, f)
-
-oobList = np.array(oobList)
-index = np.where(oobList[:,1]==max(oobList[:,1]))[0][0]
-print("Optimal n_estimators:",oobList[index][0][0])
-print("Optimal max_features:",oobList[index][0][2])
-print("Optimal min_samples_splt:",oobList[index][0][1])
-best_max_features = oobList[index][0][2]
-best_min_samples_split = oobList[index][0][1]
-best_n_estimators = oobList[index][0][0]
-
-rf = RandomForestClassifier(criterion='entropy',n_estimators=best_n_estimators,max_features=best_max_features,min_samples_split=best_min_samples_split,oob_score=True,n_jobs=-1)
-st = time()
-rf.fit(trainX,trainY)
-print("Time",time()-st)
-print("Out of bag score:",rf.oob_score_)
-print("Training score:",rf.score(trainX,trainY))
-print("Testing score:",rf.score(testX,testY))
-print("Validation score:",rf.score(valX,valY))
-
-rf = RandomForestClassifier(criterion='entropy',oob_score=True,n_jobs=-1)
-parameters = {'n_estimators':[50,150,250,350,450],'max_features':[0.1,0.3,0.5,0.7,0.9,1],'min_samples_split':[2,4,6,8,10]}
-gridSearchclf = GridSearchCV(rf, parameters,n_jobs=-1,scoring=scorer,cv=3)
-try:
-    st = time()
-    pickle_in = open("gridCV3.pickle","rb")
-    gridSearchclf = pickle.load(pickle_in)
-    print("Grid Search with cross validation:",time()-st)
-except:
-    st = time()
-    gridSearchclf.fit(trainX,trainY)
-    print("Grid Search with cross validation:",time()-st)
-    with open("gridCV3.pickle","wb") as f:
-        pickle.dump(gridSearchclf, f)
-print(gridSearchclf.best_params_)
-best_max_features = gridSearchclf.best_params_['max_features']
-best_min_samples_split = gridSearchclf.best_params_['min_samples_split']
-best_n_estimators = gridSearchclf.best_params_['n_estimators']
-rf = RandomForestClassifier(criterion='entropy',n_estimators=best_n_estimators,max_features=best_max_features,min_samples_split=best_min_samples_split,oob_score=True,n_jobs=-1)
-st = time()
-rf.fit(trainX,trainY)
-print("Time",time()-st)
-print("Out of bag score:",rf.oob_score_)
-print("Training score:",rf.score(trainX,trainY))
-print("Testing score:",rf.score(testX,testY))
-print("Validation score:",rf.score(valX,valY))
+    rf.fit(trainX,trainY)
+    print("Time",time()-st)
+    print("Out of bag score:",rf.oob_score_)
+    print("Training score:",rf.score(trainX,trainY))
+    print("Testing score:",rf.score(testX,testY))
+    print("Validation score:",rf.score(valX,valY))
 
 
-# ## PART D
+    # PART D
 
-estimatorList = [50,150,250,350,450]
-minSamplesList = [2,4,6,8,10]
-maxFeaturesList = [0.1,0.3,0.5,0.7,0.9,1]
-try:
-    st = time()
-    pickle_in = open("paramSensitivity350.pickle","rb")
-    n_estimators_varied,min_samples_split_varied,max_features_varied = pickle.load(pickle_in)
-    print(time()-st)
-except:
-    st = time()
-    n_estimators_varied,min_samples_split_varied,max_features_varied = paramSensitivity(estimatorList,minSamplesList,maxFeaturesList)  
-    print(time()-st)
-    with open("paramSensitivity350.pickle","wb") as f:
-        pickle.dump((n_estimators_varied,min_samples_split_varied,max_features_varied), f)
+    estimatorList = [50,150,250,350,450]
+    minSamplesList = [2,4,6,8,10]
+    maxFeaturesList = [0.1,0.3,0.5,0.7,0.9,1]
+    try:
+        st = time()
+        pickle_in = open("paramSensitivity350.pickle","rb")
+        n_estimators_varied,min_samples_split_varied,max_features_varied = pickle.load(pickle_in)
+        print(time()-st)
+    except:
+        st = time()
+        n_estimators_varied,min_samples_split_varied,max_features_varied = paramSensitivity(estimatorList,minSamplesList,maxFeaturesList)  
+        print(time()-st)
+        with open("paramSensitivity350.pickle","wb") as f:
+            pickle.dump((n_estimators_varied,min_samples_split_varied,max_features_varied), f)
 
-plotForest(estimatorList,n_estimators_varied,"Varying n_estimators","n_estimator","lower right") 
-plotForest(minSamplesList,min_samples_split_varied,"Varying min_samples_split","min_samples_split","lower right") 
-plotForest(maxFeaturesList,max_features_varied,"Varying max_features","max_features","lower left")
+    plotForest(estimatorList,n_estimators_varied,"Varying n_estimators","n_estimator","lower right") 
+    plotForest(minSamplesList,min_samples_split_varied,"Varying min_samples_split","min_samples_split","lower right") 
+    plotForest(maxFeaturesList,max_features_varied,"Varying max_features","max_features","lower left")
