@@ -218,21 +218,21 @@ def plotData(x,data):
   plt.legend(loc="lower right")
   plt.show()
 
-if __name_=="__main__":
+if __name__=="__main__":
     # PART B
 
     nodeValues = [1,5,10,50,100]
     data = (False,0.1,1e-8,2000,trainX,trainY,testX,testY)
     try:
         st = time()
-        pickle_in = open("/content/drive/My Drive/Colab Notebooks/alphabet/Partb.pickle","rb")
+        pickle_in = open("Partb.pickle","rb")
         res = pickle.load(pickle_in)
         print(time()-st)
     except:
         st = time()
         res = Parallel(n_jobs=-2)(delayed(trainNetwork)(i,data) for i in nodeValues)
         print(time()-st)
-        with open("/content/drive/My Drive/Colab Notebooks/alphabet/Partb.pickle","wb") as f:
+        with open("Partb.pickle","wb") as f:
             pickle.dump(res,f)
     
     print(res)
@@ -244,14 +244,14 @@ if __name_=="__main__":
     data = (True,0.5,1e-8,2000,trainX,trainY,testX,testY)
     try:
         st = time()
-        pickle_in = open("/content/drive/My Drive/Colab Notebooks/alphabet/Partc.pickle","rb")
+        pickle_in = open("Partc.pickle","rb")
         res = pickle.load(pickle_in)
         print(time()-st)
     except:
         st = time()
         res = Parallel(n_jobs=-2)(delayed(trainNetwork)(i,data) for i in nodeValues)
         print(time()-st)
-        with open("/content/drive/My Drive/Colab Notebooks/alphabet/Partc.pickle","wb") as f:
+        with open("Partc.pickle","wb") as f:
             pickle.dump(res,f)
     
     print(res)
@@ -271,12 +271,12 @@ if __name_=="__main__":
 
     # PART E
 
-    mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',alpha=0,learning_rate_init=0.5,learning_rate="invscaling",batch_size=100)
+    mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',alpha=0,learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000)
     mlp.fit(trainX,trainY.ravel())
     print("Training Score:",mlp.score(trainX,trainY))
     print("Testing Score:",mlp.score(testX,testY))
 
-    mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',alpha=0,learning_rate_init=0.5,learning_rate="invscaling",batch_size=100)
+    mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',alpha=0,learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000)
     mlp.fit(trainX,trainY.ravel())
     print("Training Score:",mlp.score(trainX,trainY))
     print("Testing Score:",mlp.score(testX,testY))
