@@ -275,6 +275,7 @@ if __name__=="__main__":
   oneHotYTrain = createOneHot(trainY,26)
   oneHotYTest = createOneHot(testY,26)
 
+  # Sigmoid unit with 0.5 learning rate
   mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
   mlp.fit(trainX,oneHotYTrain)
   print("Training Score:",score(mlp.predict_proba(trainX),trainY))
@@ -282,6 +283,7 @@ if __name__=="__main__":
   print("Train and Test scores for one hot vectors:")
   print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
 
+  # Relu unit with 0.5 learning rate
   mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,alpha=0,momentum=0,max_iter=2000)
   mlp.fit(trainX,oneHotYTrain)
   print("Training Score:",score(mlp.predict_proba(trainX),trainY))
@@ -289,20 +291,7 @@ if __name__=="__main__":
   print("Train and Test scores for one hot vectors:")
   print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
 
-  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.1,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
-  mlp.fit(trainX,oneHotYTrain)
-  print("Training Score (Logistic):",score(mlp.predict_proba(trainX),trainY))
-  print("Testing Score (Logistic):",score(mlp.predict_proba(testX),testY))
-  print("Train and Test scores for one hot vectors:")
-  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
-
-  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.1,learning_rate="invscaling",batch_size=100,alpha=0,momentum=0,max_iter=2000)
-  mlp.fit(trainX,oneHotYTrain)
-  print("Training Score (Relu):",score(mlp.predict_proba(trainX),trainY))
-  print("Testing Score (Relu):",score(mlp.predict_proba(testX),testY))
-  print("Train and Test scores for one hot vectors:")
-  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
-
+  # Sigmoid unit with 0.5 adaptive learning rate
   mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.5,learning_rate="adaptive",batch_size=100,max_iter=2000,alpha=0,momentum=0)
   mlp.fit(trainX,oneHotYTrain)
   print("Training Score (Logistic):",score(mlp.predict_proba(trainX),trainY))
@@ -310,6 +299,7 @@ if __name__=="__main__":
   print("Train and Test scores for one hot vectors:")
   print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
 
+  # Relu unit with 0.5 adaptive learning rate
   mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.5,learning_rate="adaptive",batch_size=100,max_iter=2000,alpha=0,momentum=0)
   mlp.fit(trainX,oneHotYTrain)
   print("Training Score (Relu):",score(mlp.predict_proba(trainX),trainY))
@@ -317,11 +307,13 @@ if __name__=="__main__":
   print("Train and Test scores for one hot vectors:")
   print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
 
+  # Sigmoid unit with 0.5 learning rate when softmax function is used
   mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
   mlp.fit(trainX,trainY)
   print("Training and Testing scores for Sigmoid (when MLP uses softmax as output layer)")
   print(mlp.score(trainX,trainY),mlp.score(testX,testY))
 
+  # Relu unit with 0.5 learning rate when softmax function is used
   mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
   mlp.fit(trainX,trainY)
   print("Training and Testing scores for Relu (when MLP uses softmax as output layer)")
