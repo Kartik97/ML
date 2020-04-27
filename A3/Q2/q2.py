@@ -11,8 +11,12 @@ import matplotlib.pyplot as plt
 import itertools
 import math
 from sklearn.neural_network import MLPClassifier
+import sys
 
-path = input("Enter the path")
+if(len(sys.argv)==1):
+  path = "../alphabet"
+else:
+  path = sys.argv[1]
 train = (pd.read_csv(path+"/train.csv",header=None))
 test = (pd.read_csv(path+"/test.csv",header=None))
 trainX = np.array(train.drop(columns=[784]))/255
@@ -72,22 +76,17 @@ class NeuralNetwork:
       return z
 
   def fwdProp(self,X):
-    # data = np.append(np.ones((X.shape[0],1)),X,axis=1)
     data = X
     layerX = [data]
     l = len(self.weights)
     for i in range(l):
       out = (data@self.weights[i])+self.bias[i]
-      # out = (data@self.weights[i])
 
       if(i==l-1):
         out = self.activation(out,outputLayer=True)
       else:
         out = self.activation(out)
-      # if(i!=l-1):
-        # data = np.append(np.ones((out.shape[0],1)),out,axis=1)
-      # else:
-        # data = out
+
       data = out
       layerX.append(data)
     return layerX
@@ -97,7 +96,7 @@ class NeuralNetwork:
     delta = (Y-X[l])*X[l]*(1-X[l])
     weightGrad = [X[l-1].T@(-delta)]
     biasGrad = [(-delta).sum(axis=0,keepdims=True)]
-    for i in range(l-1,0,-1):   ## weights of layer x are stored at index x but layerX contains x+1 ele including initial X
+    for i in range(l-1,0,-1):   
       if(self.activationFunction=="sigmoid"):
         delta = ((delta)@self.weights[i].T)*X[i]*(1-X[i])
       elif(self.activationFunction=="relu"):
@@ -123,7 +122,7 @@ class NeuralNetwork:
     curCost,prevCost = 0,-1
     eta = self.eta
     critCount=0
-    # print(num_batches,self.eta)
+
     while(not conv and count<=maxIter):
       batch=0
       # do epoch
@@ -145,7 +144,6 @@ class NeuralNetwork:
 
         if(batchCount%check==0):
           curCost = curCost/check
-          # print(curCost,count)
           if(prevCost!=-1 and abs(prevCost-curCost)<=epsilon):
             conv = True
             break
@@ -156,8 +154,6 @@ class NeuralNetwork:
       if(self.adaptiveLearning):
         eta=self.eta/math.sqrt(count)
       count+=1
-    # print(eta)
-    # print(count)
     return count
 
   def fit(self,X,Y,maxIter=2000,epsilon=1e-8,check=30):
@@ -177,7 +173,7 @@ class NeuralNetwork:
   def score(self,X,Y):
     pred,prob = self.predict(X)
     Y_ = self.createOneHot(Y)
-    print("Cost:",self.calCost(prob,Y_))
+    # print("Cost:",self.calCost(prob,Y_))
     return ((pred==Y.flatten()).sum()/Y.shape[0])
 
 def trainNetwork(nodes,para):
@@ -188,12 +184,26 @@ def trainNetwork(nodes,para):
   timetaken = (time()-st)
   return (timetaken,epochCount,nn.score(trainX,trainY),nn.score(testX,testY))
 
+def createOneHot(Y,classes):
+  oneHot = np.zeros((Y.shape[0],classes))
+  for i in range(Y.shape[0]):
+    oneHot[i,Y[i]]=1
+  return oneHot
+
+def score(prob,Y):
+  maxVal = np.max(prob,axis=1,keepdims=True)
+  pred=[]
+  for i in range(prob.shape[0]):
+    temp = (np.where(prob[i,:]==maxVal[i]))
+    pred.append(temp[0][0])
+  return ((pred==Y.flatten()).sum()/Y.shape[0])
+
 def plotData(x,data):
   data = np.array(data)
   plt.figure(0)
   ax = plt.gca()
   ax.plot(x,data[:,2],label="Training Accuracy",marker="o")
-  # ax.plot(x,data[:,3],label="Testing Accuracy",marker="*")
+  ax.plot(x,data[:,3],label="Testing Accuracy",marker="*")
   plt.title("Accuracy on Training Data")
   ax.set_xlabel("Number of Nodes in Hidden Layer")
   ax.set_ylabel("Accuracy")
@@ -202,15 +212,6 @@ def plotData(x,data):
 
   plt.figure(1)
   ax = plt.gca()
-  ax.plot(x,data[:,3],label="Testing Accuracy",marker="*")
-  plt.title("Accuracy on Testing Data")
-  ax.set_xlabel("Number of Nodes in Hidden Layer")
-  ax.set_ylabel("Accuracy")
-  plt.legend(loc="lower right")
-  plt.show()
-
-  plt.figure(2)
-  ax = plt.gca()
   ax.plot(x,data[:,0]/60,label="Time Taken",marker="o")
   plt.title("Time taken to train the model")
   ax.set_xlabel("Number of Nodes in Hidden Layer")
@@ -218,66 +219,110 @@ def plotData(x,data):
   plt.legend(loc="lower right")
   plt.show()
 
+
 if __name__=="__main__":
-    # PART B
+  # PART B
+  nodeValues = [1,5,10,50,100]
+  data = (False,0.1,1e-8,2000,trainX,trainY,testX,testY)
+  try:
+      st = time()
+      pickle_in = open("Partb.pickle","rb")
+      res = pickle.load(pickle_in)
+      print(time()-st)
+  except:
+      st = time()
+      res = Parallel(n_jobs=-2)(delayed(trainNetwork)(i,data) for i in nodeValues)
+      print(time()-st)
+      with open("Partb.pickle","wb") as f:
+          pickle.dump(res,f)
 
-    nodeValues = [1,5,10,50,100]
-    data = (False,0.1,1e-8,2000,trainX,trainY,testX,testY)
-    try:
-        st = time()
-        pickle_in = open("Partb.pickle","rb")
-        res = pickle.load(pickle_in)
-        print(time()-st)
-    except:
-        st = time()
-        res = Parallel(n_jobs=-2)(delayed(trainNetwork)(i,data) for i in nodeValues)
-        print(time()-st)
-        with open("Partb.pickle","wb") as f:
-            pickle.dump(res,f)
-    
-    print(res)
-    plotData(nodeValues,res)
+  print("Part B:")
+  print(np.array(res))
+  plotData(nodeValues,res)
 
-    # PART C
+  # PART C
+  nodeValues = [1,5,10,50,100]
+  data = (True,0.5,1e-8,2000,trainX,trainY,testX,testY)
+  try:
+      st = time()
+      pickle_in = open("Partc.pickle","rb")
+      res = pickle.load(pickle_in)
+      print(time()-st)
+  except:
+      st = time()
+      res = Parallel(n_jobs=-2)(delayed(trainNetwork)(i,data) for i in nodeValues)
+      print(time()-st)
+      with open("Partc.pickle","wb") as f:
+          pickle.dump(res,f)
 
-    nodeValues = [1,5,10,50,100]
-    data = (True,0.5,1e-8,2000,trainX,trainY,testX,testY)
-    try:
-        st = time()
-        pickle_in = open("Partc.pickle","rb")
-        res = pickle.load(pickle_in)
-        print(time()-st)
-    except:
-        st = time()
-        res = Parallel(n_jobs=-2)(delayed(trainNetwork)(i,data) for i in nodeValues)
-        print(time()-st)
-        with open("Partc.pickle","wb") as f:
-            pickle.dump(res,f)
-    
-    print(res)
-    plotData(nodeValues,res)
+  print("Part C:")
+  print(np.array(res))
+  plotData(nodeValues,res)
 
-    # PART D
 
-    nn = NeuralNetwork(100,784,[100,100],26,eta=0.5,adaptiveLearning=True,activation="relu",weight_init="random")
-    nn.fit(trainX,trainY)
-    print("Training Score:",nn.score(trainX,trainY))
-    print("Testing Score:",nn.score(testX,testY))
+  # PART D
+  nn = NeuralNetwork(100,784,[100,100],26,eta=0.5,adaptiveLearning=True,activation="relu",weight_init="random")
+  nn.fit(trainX,trainY)
+  print("Training Score on Relu Activation:",nn.score(trainX,trainY))
+  print("Testing Score on Relu Activation:",nn.score(testX,testY))
 
-    nn = NeuralNetwork(100,784,[100,100],26,eta=0.5,adaptiveLearning=True,activation="sigmoid",weight_init="random")
-    nn.fit(trainX,trainY)
-    print("Training Score:",nn.score(trainX,trainY))
-    print("Testing Score:",nn.score(testX,testY))
+  nn = NeuralNetwork(100,784,[100,100],26,eta=0.5,adaptiveLearning=True,activation="sigmoid",weight_init="random")
+  nn.fit(trainX,trainY)
+  print("Training Score on Sigmoid Activation:",nn.score(trainX,trainY))
+  print("Testing Score on Sigmoid Activation:",nn.score(testX,testY))
 
-    # PART E
+  # PART E
+  oneHotYTrain = createOneHot(trainY,26)
+  oneHotYTest = createOneHot(testY,26)
 
-    mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',alpha=0,learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000)
-    mlp.fit(trainX,trainY.ravel())
-    print("Training Score:",mlp.score(trainX,trainY))
-    print("Testing Score:",mlp.score(testX,testY))
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
+  mlp.fit(trainX,oneHotYTrain)
+  print("Training Score:",score(mlp.predict_proba(trainX),trainY))
+  print("Testing Score:",score(mlp.predict_proba(testX),testY))
+  print("Train and Test scores for one hot vectors:")
+  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
 
-    mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',alpha=0,learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000)
-    mlp.fit(trainX,trainY.ravel())
-    print("Training Score:",mlp.score(trainX,trainY))
-    print("Testing Score:",mlp.score(testX,testY))
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,alpha=0,momentum=0,max_iter=2000)
+  mlp.fit(trainX,oneHotYTrain)
+  print("Training Score:",score(mlp.predict_proba(trainX),trainY))
+  print("Testing Score:",score(mlp.predict_proba(testX),testY))
+  print("Train and Test scores for one hot vectors:")
+  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
 
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.1,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
+  mlp.fit(trainX,oneHotYTrain)
+  print("Training Score (Logistic):",score(mlp.predict_proba(trainX),trainY))
+  print("Testing Score (Logistic):",score(mlp.predict_proba(testX),testY))
+  print("Train and Test scores for one hot vectors:")
+  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
+
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.1,learning_rate="invscaling",batch_size=100,alpha=0,momentum=0,max_iter=2000)
+  mlp.fit(trainX,oneHotYTrain)
+  print("Training Score (Relu):",score(mlp.predict_proba(trainX),trainY))
+  print("Testing Score (Relu):",score(mlp.predict_proba(testX),testY))
+  print("Train and Test scores for one hot vectors:")
+  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
+
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.5,learning_rate="adaptive",batch_size=100,max_iter=2000,alpha=0,momentum=0)
+  mlp.fit(trainX,oneHotYTrain)
+  print("Training Score (Logistic):",score(mlp.predict_proba(trainX),trainY))
+  print("Testing Score (Logistic):",score(mlp.predict_proba(testX),testY))
+  print("Train and Test scores for one hot vectors:")
+  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
+
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.5,learning_rate="adaptive",batch_size=100,max_iter=2000,alpha=0,momentum=0)
+  mlp.fit(trainX,oneHotYTrain)
+  print("Training Score (Relu):",score(mlp.predict_proba(trainX),trainY))
+  print("Testing Score (Relu):",score(mlp.predict_proba(testX),testY))
+  print("Train and Test scores for one hot vectors:")
+  print(mlp.score(trainX,oneHotYTrain),mlp.score(testX,oneHotYTest))
+
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='logistic',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
+  mlp.fit(trainX,trainY)
+  print("Training and Testing scores for Sigmoid (when MLP uses softmax as output layer)")
+  print(mlp.score(trainX,trainY),mlp.score(testX,testY))
+
+  mlp = MLPClassifier(hidden_layer_sizes=(100,100),activation='relu',solver='sgd',learning_rate_init=0.5,learning_rate="invscaling",batch_size=100,max_iter=2000,alpha=0,momentum=0)
+  mlp.fit(trainX,trainY)
+  print("Training and Testing scores for Relu (when MLP uses softmax as output layer)")
+  print(mlp.score(trainX,trainY),mlp.score(testX,testY))
